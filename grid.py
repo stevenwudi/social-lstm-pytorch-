@@ -32,8 +32,9 @@ def getGridMask(frame, neighborhood_size, grid_size, retNodePresentName):
         if f[0] not in retNodePresentName:
             ids_del.append(i)
 
-    for idx in ids_del.reverse():
-        frame = np.delete(frame, idx, axis=0)
+    if len(ids_del):
+        for idx in ids_del.reverse():
+            frame = np.delete(frame, idx, axis=0)
 
     # For each ped in the frame (existent and non-existent)
     for pedindex in range(len(frame)):
