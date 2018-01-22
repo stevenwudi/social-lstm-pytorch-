@@ -7,7 +7,7 @@ Date: 21st jan 2018
 import torch
 from torch.autograd import Variable
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import argparse
 import os
 import time
@@ -18,6 +18,8 @@ from synthia_utils import Synthia_DataLoader
 from grid import getSequenceGridMask
 from st_graph import ST_GRAPH
 from criterion import Gaussian2DLikelihood
+
+from sample import sample, get_mean_error, get_final_error
 
 
 def main():
@@ -36,7 +38,7 @@ def main():
     parser.add_argument('--pred_length', type=int, default=8,
                         help='prediction length')
     # Number of epochs parameter
-    parser.add_argument('--num_epochs', type=int, default=150,
+    parser.add_argument('--num_epochs', type=int, default=10,
                         help='number of epochs')
     # Frequency at which the model should be saved parameter
     parser.add_argument('--save_every', type=int, default=400,
@@ -65,7 +67,7 @@ def main():
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
     # The leave out dataset
-    parser.add_argument('--leaveDataset', type=int, default=0,
+    parser.add_argument('--leaveDataset', type=int, default=7,
                         help='The dataset index to be left out in training')
     # Lambda regularization parameter (L2)
     parser.add_argument('--lambda_param', type=float, default=0.0001,
@@ -85,6 +87,136 @@ def main():
     train(args)
 
 
+def test(sample_args, epoch):
+    # Parse the parameters
+
+    sample_args.obs_length = 15
+    sample_args.pred_length = 8
+    sample_args.epoch = epoch
+
+    # Save directory
+    save_directory = '../save/' + str(sample_args.leaveDataset) + '/'
+
+    # Define the path for the config file for saved args
+    with open(os.path.join(save_directory, 'config.pkl'), 'rb') as f:
+        saved_args = pickle.load(f)
+
+    # Initialize net
+    net = SocialLSTM(saved_args, True)
+    net.cuda()
+
+    # Path to store the checkpoint file
+    def checkpoint_path(x):
+        return os.path.join(save_directory, 'social_lstm_model_' + str(x) + '.tar')
+
+
+    # checkpoint_path = os.path.join(save_directory, 'srnn_model.tar')
+    if os.path.isfile(checkpoint_path(sample_args.epoch)):
+        print('Loading checkpoint')
+        checkpoint = torch.load(checkpoint_path(sample_args.epoch))
+        # model_iteration = checkpoint['iteration']
+        model_epoch = checkpoint['epoch']
+        net.load_state_dict(checkpoint['state_dict'])
+        print('Loaded checkpoint at epoch', model_epoch)
+
+    # Test dataset
+    dataset = [sample_args.leaveDataset]
+
+    # Create the DataLoader object
+    # dataloader = DataLoader(1, sample_args.pred_length + sample_args.obs_length, dataset, True, infer=True)
+
+    dataloader = Synthia_DataLoader(data_root=sample_args.data_root, img_dir=sample_args.img_dir, leaveDataset=sample_args.leaveDataset,
+                                    batch_size=sample_args.batch_size, seq_length=sample_args.seq_length,
+                                    datasets=dataset, dataset_dim=sample_args.dataset_dim, forcePreProcess=True)
+
+    dataloader.reset_batch_pointer()
+
+    # Construct the ST-graph object
+    stgraph = ST_GRAPH(1, sample_args.pred_length + sample_args.obs_length)
+
+    results = []
+
+    # Variable to maintain total error
+    total_error = 0
+    final_error = 0
+
+    # Log directory
+    log_directory = '../log/'
+    log_directory += str(sample_args.leaveDataset) + '/'
+
+    # Logging files
+    log_file = open(os.path.join(log_directory, 'test.txt'), 'a')
+
+    # For each batch
+    for batch in range(dataloader.num_batches):
+        start = time.time()
+
+        # Get data
+        x, _, d = dataloader.next_batch()
+
+        stgraph.readGraph(x)
+        # Get the sequence
+        x_seq, d_seq = x[0], d[0]
+
+        # Dimensions of the dataset
+        if d_seq == 0 and dataset[0] == 0:
+            dimensions = [640, 480]
+        else:
+            dimensions = [720, 576]
+
+        # sythia dataset width and height
+        dimensions = sample_args.dataset_dim
+
+
+        nodes, _, nodesPresent, _, retNodePresentName = stgraph.getSequence(0)
+        nodes = Variable(torch.from_numpy(nodes).float(), volatile=True).cuda()
+        # Get the grid masks for the sequence
+        grid_seq = getSequenceGridMask(x_seq, sample_args.neighborhood_size, sample_args.grid_size, retNodePresentName)
+
+        # Construct ST graph
+
+
+        # Get nodes and nodesPresent
+
+
+
+        # Extract the observed part of the trajectories
+        obs_nodes, obs_nodesPresent, obs_grid = nodes[:sample_args.obs_length], nodesPresent[
+                                                                                :sample_args.obs_length], grid_seq[
+                                                                                                          :sample_args.obs_length]
+
+        # The sample function
+        ret_nodes = sample(obs_nodes, obs_nodesPresent, obs_grid, sample_args, net, nodes, nodesPresent, grid_seq,
+                           saved_args, dimensions)
+
+        # Record the mean and final displacement error
+        total_error += get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+                                      nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
+        final_error += get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+                                       nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
+
+        end = time.time()
+
+        print('Processed trajectory number : ', batch, 'out of', dataloader.num_batches, 'trajectories in time',
+              end - start)
+
+        results.append((nodes.data.cpu().numpy(), ret_nodes.data.cpu().numpy(), nodesPresent, sample_args.obs_length))
+
+        # Reset the ST graph
+        stgraph.reset()
+
+    print('Total mean error of the model is ', total_error / dataloader.num_batches)
+    print('Total final error of the model is ', final_error / dataloader.num_batches)
+
+    log_file.writelines('epoch:' + str(epoch) + '------Total mean error of the model is ' + str(total_error / dataloader.num_batches))
+    log_file.writelines('\n')
+    log_file.writelines('epoch:' + str(epoch) + '------Total final error of the model is ' + str(final_error / dataloader.num_batches))
+    log_file.writelines('\n')
+    log_file.flush()
+    log_file.close()
+
+
+
 def train(args):
     datasets = [i for i in range(9)]
     # Remove the leave out dataset from the datasets
@@ -94,7 +226,7 @@ def train(args):
 
     dataloader = Synthia_DataLoader(data_root=args.data_root, img_dir=args.img_dir, leaveDataset=args.leaveDataset,
                                     batch_size=args.batch_size, seq_length=args.seq_length+1,
-                                    datasets=datasets, dataset_dim=args.dataset_dim, forcePreProcess=False)
+                                    datasets=datasets, dataset_dim=args.dataset_dim, forcePreProcess=True)
 
     # Construct the ST-graph object
     stgraph = ST_GRAPH(args.batch_size, args.seq_length + 1, args.dataset_dim)
@@ -203,6 +335,8 @@ def train(args):
             'state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict()
         }, checkpoint_path(epoch))
+
+        test(args, epoch)
 
     # Close logging files
     log_file.close()
