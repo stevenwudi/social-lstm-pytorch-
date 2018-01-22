@@ -73,7 +73,7 @@ def getGridMaskInference(frame, dimensions, neighborhood_size, grid_size):
 
     frame_mask = np.zeros((mnp, mnp, grid_size**2))
 
-    width_bound, height_bound = (neighborhood_size/(width*1.0))*2, (neighborhood_size/(height*1.0))*2
+    width_bound, height_bound = (neighborhood_size[0]/(width*1.0))*2, (neighborhood_size[1]/(height*1.0))*2
 
     # For each ped in the frame (existent and non-existent)
     for pedindex in range(mnp):

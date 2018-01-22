@@ -14,7 +14,7 @@ class Synthia_DataLoader():
                  batch_size=50,
                  seq_length=24,
                  datasets=[i for i in range(9)],
-                 dataset_dim=[760, 1280],
+                 dataset_dim=(760, 1280),
                  forcePreProcess=False,
                  infer=False):
         '''
@@ -41,8 +41,12 @@ class Synthia_DataLoader():
         self.seq_length = seq_length
 
         # Define the path in which the process data would be stored
-        data_file = os.path.join(os.path.abspath(os.path.join(self.data_root, os.pardir)),
-                                 self.data_root.split('/')[-1] +"_leave_%d.cpkl"%leaveDataset)
+        if infer:
+            data_file = os.path.join(os.path.abspath(os.path.join(self.data_root, os.pardir)),
+                                     self.data_root.split('/')[-1] +"_use_%d.cpkl"%leaveDataset)
+        else:
+            data_file = os.path.join(os.path.abspath(os.path.join(self.data_root, os.pardir)),
+                                     self.data_root.split('/')[-1] +"_leave_%d.cpkl"%leaveDataset)
 
         # If the file doesn't exist or forcePreProcess is true
         if not(os.path.exists(data_file)) or forcePreProcess:
