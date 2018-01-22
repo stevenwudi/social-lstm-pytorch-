@@ -27,9 +27,13 @@ def getGridMask(frame, neighborhood_size, grid_size, retNodePresentName):
     frame_mask = np.zeros((mnp, mnp, grid_size**2))
 
     # we are going to delete the formerly appeared, than disappeared, and reappeared id here
-    for i,f in enumerate(frame):
+    ids_del = []
+    for i, f in enumerate(frame):
         if f[0] not in retNodePresentName:
-            frame = np.delete(frame, i, axis=0)
+            ids_del.append(i)
+
+    for idx in ids_del.reverse():
+        frame = np.delete(frame, idx, axis=0)
 
     # For each ped in the frame (existent and non-existent)
     for pedindex in range(len(frame)):
