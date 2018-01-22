@@ -1,22 +1,19 @@
 '''
 Test script for the Social LSTM model
 
-Author: Anirudh Vemula
-Date: 14th June 2017
+Author: Di Wu
+Date: 21st Jan 2018
 '''
 
 import os
-import pickle
-import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import pickle
 import argparse
 import time
 
 import torch
 from torch.autograd import Variable
-
-import numpy as np
-from utils import DataLoader
+from synthia_utils import Synthia_DataLoader
 from st_graph import ST_GRAPH
 from model import SocialLSTM
 from helper import getCoef, sample_gaussian_2d, compute_edges, get_mean_error, get_final_error
@@ -38,7 +35,7 @@ def main():
                         help='Dataset to be tested on')
 
     # Model to be loaded
-    parser.add_argument('--epoch', type=int, default=49,
+    parser.add_argument('--epoch', type=int, default=4,
                         help='Epoch of model to be loaded')
 
     # Parse the parameters
@@ -70,55 +67,68 @@ def main():
     dataset = [sample_args.test_dataset]
 
     # Create the DataLoader object
-    dataloader = DataLoader(1, sample_args.pred_length + sample_args.obs_length, dataset, True, infer=True)
+    dataloader = Synthia_DataLoader(
+        data_root='../data/synthia/SYNTHIA-SEQS-01',
+        img_dir='/media/samsumg_1tb/synthia/Datasets',
+        batch_size=1,
+        seq_length=sample_args.pred_length + sample_args.obs_length,
+        datasets=dataset,
+        forcePreProcess=False,
+        infer=True)
 
     dataloader.reset_batch_pointer()
 
     # Construct the ST-graph object
-    stgraph = ST_GRAPH(1, sample_args.pred_length + sample_args.obs_length)
+    stgraph = ST_GRAPH(1, sample_args.pred_length + sample_args.obs_length, saved_args.dataset_dim)
 
     results = []
 
     # Variable to maintain total error
     total_error = 0
     final_error = 0
+    errCenter = 0
+    final_error_errCenter = 0
 
     # For each batch
     for batch in range(dataloader.num_batches):
         start = time.time()
 
         # Get data
-        x, _, d = dataloader.next_batch(randomUpdate=False)
+        x, _, _ = dataloader.next_batch()
 
         # Get the sequence
-        x_seq, d_seq = x[0], d[0]
-
-        # Dimensions of the dataset
-        if d_seq == 0 and dataset[0] == 0:
-            dimensions = [640, 480]
-        else:
-            dimensions = [720, 576]
-
-        # Get the grid masks for the sequence
-        grid_seq = getSequenceGridMask(x_seq, dimensions, saved_args.neighborhood_size, saved_args.grid_size)
+        x_seq = x[0]
 
         # Construct ST graph
         stgraph.readGraph(x)
 
         # Get nodes and nodesPresent
-        nodes, _, nodesPresent, _ = stgraph.getSequence(0)
+        nodes, _, nodesPresent, _, retNodePresentName = stgraph.getSequence(0)
+
+        # Get the grid masks for the sequence
+        grid_seq = getSequenceGridMask(x_seq, saved_args.neighborhood_size, saved_args.grid_size, retNodePresentName)
+
         nodes = Variable(torch.from_numpy(nodes).float(), volatile=True).cuda()
 
         # Extract the observed part of the trajectories
         obs_nodes, obs_nodesPresent, obs_grid = nodes[:sample_args.obs_length], nodesPresent[:sample_args.obs_length], grid_seq[:sample_args.obs_length]
 
         # The sample function
-        ret_nodes = sample(obs_nodes, obs_nodesPresent, obs_grid, sample_args, net, nodes, nodesPresent, grid_seq, saved_args, dimensions)
+        ret_nodes = sample(obs_nodes, obs_nodesPresent, obs_grid, sample_args, net, saved_args)
 
         # Record the mean and final displacement error
-        total_error += get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data, nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:])
-        final_error += get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data, nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:])
+        total_error_temp, errCenter_temp = get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+                                      nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:],
+                                      saved_args.dataset_dim)
 
+        final_error_temp, final_error_errCenter_temp = get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+                                       nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:],
+                                       saved_args.dataset_dim)
+
+        total_error += total_error_temp
+        errCenter += errCenter_temp
+        final_error += final_error_temp
+        final_error_errCenter += final_error_errCenter_temp
         end = time.time()
 
         print('Processed trajectory number : ', batch, 'out of', dataloader.num_batches, 'trajectories in time', end - start)
@@ -129,14 +139,22 @@ def main():
         stgraph.reset()
 
     print('Total mean error of the model is ', total_error / dataloader.num_batches)
-    print('Total final error of the model is ', final_error / dataloader.num_batches)
+    print('Total final error of the model is ', errCenter / dataloader.num_batches)
+    print('Total center pixel of the model is ', total_error / dataloader.num_batches)
+    print('Total final center pixel error of the model is ', final_error_errCenter / dataloader.num_batches)
 
     print('Saving results')
     with open(os.path.join(save_directory, 'results.pkl'), 'wb') as f:
         pickle.dump(results, f)
+    """
+    Total mean error of the model is  0.009818906374781172
+    Total final error of the model is  56.0193065963
+    Total center pixel of the model is  0.009818906374781172
+l
+    """
 
 
-def sample(nodes, nodesPresent, grid, args, net, true_nodes, true_nodesPresent, true_grid, saved_args, dimensions):
+def sample(nodes, nodesPresent, grid, args, net, saved_args):
     '''
     The sample function
     params:
@@ -151,6 +169,7 @@ def sample(nodes, nodesPresent, grid, args, net, true_nodes, true_nodesPresent, 
     dimensions: The dimensions of the dataset
     '''
     # Number of peds in the sequence
+    dimensions = saved_args.dataset_dim
     numNodes = nodes.size()[1]
 
     # Construct variables for hidden and cell states
