@@ -7,13 +7,13 @@ Date: 21st jan 2018
 import torch
 from torch.autograd import Variable
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 import os
 import time
 import pickle
 
-from model import SocialLSTM
+from model_vanilla import SocialLSTM
 from synthia_utils import Synthia_DataLoader
 from grid import getSequenceGridMask
 from st_graph import ST_GRAPH
@@ -45,10 +45,10 @@ def main():
                         help='save frequency')
     # TODO: (resolve) Clipping gradients for now. No idea whether we should
     # Gradient value at which it should be clipped
-    parser.add_argument('--grad_clip', type=float, default=10.,
+    parser.add_argument('--grad_clip', type=float, default=3.,
                         help='clip gradients at this value')
     # Learning rate parameter
-    parser.add_argument('--learning_rate', type=float, default=0.003,
+    parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='learning rate')
     # Decay rate for the learning rate parameter
     parser.add_argument('--decay_rate', type=float, default=0.95,
@@ -84,10 +84,9 @@ def main():
                         help='[car_id, centreX, centreY, height, width, d_min, d_max]')
 
     args = parser.parse_args()
-    # train(args)
-    for i in range(0, 10):
-        test(args, i)
-
+    train(args)
+    # for i in range(0, 10):
+    #     test(args, i)
 
 def test(sample_args, epoch):
     # Parse the parameters
@@ -97,7 +96,7 @@ def test(sample_args, epoch):
     sample_args.epoch = epoch
 
     # Save directory
-    save_directory = '../save/' + str(sample_args.leaveDataset) + '/'
+    save_directory = '../save_vanilla/' + str(sample_args.leaveDataset) + '/'
 
     # Define the path for the config file for saved args
     with open(os.path.join(save_directory, 'config.pkl'), 'rb') as f:
@@ -143,7 +142,7 @@ def test(sample_args, epoch):
     final_error = 0
 
     # Log directory
-    log_directory = '../log/'
+    log_directory = '../log_vanilla/'
     log_directory += str(sample_args.leaveDataset) + '/'
 
     # Logging files
@@ -234,7 +233,7 @@ def train(args):
     stgraph = ST_GRAPH(args.batch_size, args.seq_length + 1, args.dataset_dim)
 
     # Log directory
-    log_directory = '../log/'
+    log_directory = '../log_vanilla/'
     log_directory += str(args.leaveDataset) + '/'
 
     # Logging files
@@ -242,7 +241,7 @@ def train(args):
     log_file = open(os.path.join(log_directory, 'val.txt'), 'w')
 
     # Save directory
-    save_directory = '../save/'
+    save_directory = '../save_vanilla/'
     save_directory += str(args.leaveDataset) + '/'
 
     # Dump the arguments into the configuration file
@@ -339,7 +338,7 @@ def train(args):
             'optimizer_state_dict': optimizer.state_dict()
         }, checkpoint_path(epoch))
 
-        # test(args, epoch)
+        test(args, epoch)
 
     # Close logging files
     log_file.close()
