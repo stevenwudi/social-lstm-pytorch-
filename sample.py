@@ -179,11 +179,15 @@ def sample(nodes, nodesPresent, grid, args, net, true_nodes, true_nodesPresent, 
         # Extract the mean, std and corr of the bivariate Gaussian
         mux, muy, sx, sy, corr = getCoef(outputs)
         # Sample from the bivariate Gaussian
-        next_x, next_y = sample_gaussian_2d(mux.data, muy.data, sx.data, sy.data, corr.data, nodesPresent[args.obs_length-1])
+        # next_x, next_y = sample_gaussian_2d(mux.data, muy.data, sx.data, sy.data, corr.data, nodesPresent[args.obs_length-1])
 
         # Store the predicted position
-        ret_nodes[tstep + 1, :, 0] = next_x
-        ret_nodes[tstep + 1, :, 1] = next_y
+        # ret_nodes[tstep + 1, :, 0] = next_x
+        # ret_nodes[tstep + 1, :, 1] = next_y
+
+        # new version for next_x next_y
+        ret_nodes[tstep + 1, :, 0] = mux
+        ret_nodes[tstep + 1, :, 1] = muy
 
         # List of nodes at the last time-step (assuming they exist until the end)
         list_of_nodes = Variable(torch.LongTensor(nodesPresent[args.obs_length-1]), volatile=True).cuda()

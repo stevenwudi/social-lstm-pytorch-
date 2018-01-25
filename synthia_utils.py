@@ -94,7 +94,7 @@ class Synthia_DataLoader():
             # Initialize the list of numpy arrays for the current dataset
             all_frame_data.append([])
 
-            for instance_number_in_seq in car_tracking_dict.keys():
+            for instance_number_in_seq in sorted(car_tracking_dict.keys()):
                 for track_num in range(len(car_tracking_dict[instance_number_in_seq]['tracking_rect'])):
                     num_tracked_frames = len(car_tracking_dict[instance_number_in_seq]['tracking_rect'][track_num])
                     # we only consider tracked cars with more than total_frames (23 frames)

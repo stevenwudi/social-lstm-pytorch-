@@ -48,8 +48,8 @@ class ST_GRAPH():
                 # Add nodes
                 for ped in range(frame.shape[0]):
                     pedID = frame[ped][0]
-                    x = (int(frame[ped][1]) - self.dataset_dim[0]/2.) / self.dataset_dim[0]/2.
-                    y = (int(frame[ped][2]) - self.dataset_dim[1]/2.) / self.dataset_dim[1]/2.
+                    x = (int(frame[ped][1]) - self.dataset_dim[0]/2.) / self.dataset_dim[0]
+                    y = (int(frame[ped][2]) - self.dataset_dim[1]/2.) / self.dataset_dim[1]
                     pos = (x, y)
 
                     if pedID not in self.nodes[sequence]:

@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
     # The leave out dataset
-    parser.add_argument('--leaveDataset', type=int, default=8,
+    parser.add_argument('--leaveDataset', type=int, default=3,
                         help='The dataset index to be left out in training')
     # Lambda regularization parameter (L2)
     parser.add_argument('--lambda_param', type=float, default=0.0001,
@@ -86,7 +86,7 @@ def main():
     args = parser.parse_args()
     train(args)
     # for i in range(0, 10):
-    #     test(args, i)
+    # test(args, 2)
 
 def test(sample_args, epoch):
     # Parse the parameters
@@ -153,6 +153,8 @@ def test(sample_args, epoch):
         start = time.time()
 
         # Get data
+        # if batch == 15:
+        #     print (batch)
         x, _, d = dataloader.next_batch()
 
         stgraph.readGraph(x)
@@ -191,8 +193,9 @@ def test(sample_args, epoch):
                            saved_args, dimensions)
 
         # Record the mean and final displacement error
-        total_error += get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+        temp = get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                       nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
+        total_error += temp
         final_error += get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                        nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
 
@@ -200,6 +203,8 @@ def test(sample_args, epoch):
 
         print('Processed trajectory number : ', batch, 'out of', dataloader.num_batches, 'trajectories in time',
               end - start)
+
+        # print (temp)
 
         results.append((nodes.data.cpu().numpy(), ret_nodes.data.cpu().numpy(), nodesPresent, sample_args.obs_length))
 

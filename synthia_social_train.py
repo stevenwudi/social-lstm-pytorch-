@@ -45,10 +45,10 @@ def main():
                         help='save frequency')
     # TODO: (resolve) Clipping gradients for now. No idea whether we should
     # Gradient value at which it should be clipped
-    parser.add_argument('--grad_clip', type=float, default=10.,
+    parser.add_argument('--grad_clip', type=float, default=3.,
                         help='clip gradients at this value')
     # Learning rate parameter
-    parser.add_argument('--learning_rate', type=float, default=0.003,
+    parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='learning rate')
     # Decay rate for the learning rate parameter
     parser.add_argument('--decay_rate', type=float, default=0.95,
@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
     # The leave out dataset
-    parser.add_argument('--leaveDataset', type=int, default=8,
+    parser.add_argument('--leaveDataset', type=int, default=3,
                         help='The dataset index to be left out in training')
     # Lambda regularization parameter (L2)
     parser.add_argument('--lambda_param', type=float, default=0.0001,
@@ -84,9 +84,9 @@ def main():
                         help='[car_id, centreX, centreY, height, width, d_min, d_max]')
 
     args = parser.parse_args()
-    # train(args)
-    for i in range(0, 10):
-        test(args, i)
+    train(args)
+    # for i in range(0, 10):
+    # test(args, 2)
 
 
 def test(sample_args, epoch):
@@ -177,10 +177,7 @@ def test(sample_args, epoch):
 
         # Construct ST graph
 
-
         # Get nodes and nodesPresent
-
-
 
         # Extract the observed part of the trajectories
         obs_nodes, obs_nodesPresent, obs_grid = nodes[:sample_args.obs_length], nodesPresent[
@@ -192,8 +189,9 @@ def test(sample_args, epoch):
                            saved_args, dimensions)
 
         # Record the mean and final displacement error
-        total_error += get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
+        temp = get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                       nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
+        total_error += temp
         final_error += get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                        nodesPresent[sample_args.obs_length - 1], nodesPresent[sample_args.obs_length:])
 
@@ -201,6 +199,8 @@ def test(sample_args, epoch):
 
         print('Processed trajectory number : ', batch, 'out of', dataloader.num_batches, 'trajectories in time',
               end - start)
+
+        # print (temp)
 
         results.append((nodes.data.cpu().numpy(), ret_nodes.data.cpu().numpy(), nodesPresent, sample_args.obs_length))
 
@@ -339,7 +339,7 @@ def train(args):
             'optimizer_state_dict': optimizer.state_dict()
         }, checkpoint_path(epoch))
 
-        # test(args, epoch)
+        test(args, epoch)
 
     # Close logging files
     log_file.close()
