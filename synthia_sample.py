@@ -119,11 +119,11 @@ def main():
         # Record the mean and final displacement error
         total_error_temp, errCenter_temp = get_mean_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                       nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:],
-                                      saved_args.dataset_dim)
+                                      saved_args.dataset_dim, first_id=True)
 
         final_error_temp, final_error_errCenter_temp = get_final_error(ret_nodes[sample_args.obs_length:].data, nodes[sample_args.obs_length:].data,
                                        nodesPresent[sample_args.obs_length-1], nodesPresent[sample_args.obs_length:],
-                                       saved_args.dataset_dim)
+                                       saved_args.dataset_dim, first_id=True)
 
         total_error += total_error_temp
         errCenter += errCenter_temp
@@ -140,17 +140,25 @@ def main():
 
     print('Total mean error of the model is ', total_error / dataloader.num_batches)
     print('Total final error of the model is ', errCenter / dataloader.num_batches)
-    print('Total center pixel of the model is ', total_error / dataloader.num_batches)
+    print('Total center pixel of the model is ', final_error / dataloader.num_batches)
     print('Total final center pixel error of the model is ', final_error_errCenter / dataloader.num_batches)
 
     print('Saving results')
     with open(os.path.join(save_directory, 'results.pkl'), 'wb') as f:
         pickle.dump(results, f)
     """
-    Total mean error of the model is  0.009818906374781172
-    Total final error of the model is  56.0193065963
-    Total center pixel of the model is  0.009818906374781172
-l
+     
+    # Consider only the first major car
+    Total mean error of the model is  0.009398566564988485
+    Total final error of the model is  45.073611717
+    Total center pixel of the model is  0.0669545739065047
+    Total final center pixel error of the model is  82.2036703948
+    
+    Not divide by tstep+1
+    Total mean error of the model is  0.03693557346362133
+    Total final error of the model is  45.0264798789
+    Total center pixel of the model is  0.06953567121182506
+    Total final center pixel error of the model is  85.2811623748
     """
 
 

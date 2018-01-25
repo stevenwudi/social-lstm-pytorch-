@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
     # The leave out dataset
-    parser.add_argument('--leaveDataset', type=int, default=7,
+    parser.add_argument('--leaveDataset', type=int, default=1,
                         help='The dataset index to be left out in training')
     # Lambda regularization parameter (L2)
     parser.add_argument('--lambda_param', type=float, default=0.0001,
@@ -216,14 +216,12 @@ def test(sample_args, epoch):
     log_file.close()
 
 
-
 def train(args):
     datasets = [i for i in range(9)]
     # Remove the leave out dataset from the datasets
     datasets.remove(args.leaveDataset)
 
     # Construct the DataLoader object
-
     dataloader = Synthia_DataLoader(data_root=args.data_root, img_dir=args.img_dir, leaveDataset=args.leaveDataset,
                                     batch_size=args.batch_size, seq_length=args.seq_length+1,
                                     datasets=datasets, dataset_dim=args.dataset_dim, forcePreProcess=True)
