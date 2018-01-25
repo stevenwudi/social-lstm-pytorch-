@@ -7,13 +7,13 @@ Date: 21st jan 2018
 import torch
 from torch.autograd import Variable
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 import os
 import time
 import pickle
 
-from model import SocialLSTM
+from model_vanilla import SocialLSTM
 from synthia_utils import Synthia_DataLoader
 from grid import getSequenceGridMask
 from st_graph import ST_GRAPH
@@ -67,7 +67,6 @@ def main():
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
     # The leave out dataset
-
     parser.add_argument('--leaveDataset', type=int, default=3,
                         help='The dataset index to be left out in training')
     # Lambda regularization parameter (L2)
@@ -89,7 +88,6 @@ def main():
     # for i in range(0, 10):
     # test(args, 2)
 
-
 def test(sample_args, epoch):
     # Parse the parameters
 
@@ -98,7 +96,7 @@ def test(sample_args, epoch):
     sample_args.epoch = epoch
 
     # Save directory
-    save_directory = '../save/' + str(sample_args.leaveDataset) + '/'
+    save_directory = '../save_vanilla/' + str(sample_args.leaveDataset) + '/'
 
     # Define the path for the config file for saved args
     with open(os.path.join(save_directory, 'config.pkl'), 'rb') as f:
@@ -144,7 +142,7 @@ def test(sample_args, epoch):
     final_error = 0
 
     # Log directory
-    log_directory = '../log/'
+    log_directory = '../log_vanilla/'
     log_directory += str(sample_args.leaveDataset) + '/'
 
     # Logging files
@@ -155,6 +153,8 @@ def test(sample_args, epoch):
         start = time.time()
 
         # Get data
+        # if batch == 15:
+        #     print (batch)
         x, _, d = dataloader.next_batch()
 
         stgraph.readGraph(x)
@@ -178,7 +178,10 @@ def test(sample_args, epoch):
 
         # Construct ST graph
 
+
         # Get nodes and nodesPresent
+
+
 
         # Extract the observed part of the trajectories
         obs_nodes, obs_nodesPresent, obs_grid = nodes[:sample_args.obs_length], nodesPresent[
@@ -219,12 +222,14 @@ def test(sample_args, epoch):
     log_file.close()
 
 
+
 def train(args):
     datasets = [i for i in range(9)]
     # Remove the leave out dataset from the datasets
     datasets.remove(args.leaveDataset)
 
     # Construct the DataLoader object
+
     dataloader = Synthia_DataLoader(data_root=args.data_root, img_dir=args.img_dir, leaveDataset=args.leaveDataset,
                                     batch_size=args.batch_size, seq_length=args.seq_length+1,
                                     datasets=datasets, dataset_dim=args.dataset_dim, forcePreProcess=True)
@@ -233,7 +238,7 @@ def train(args):
     stgraph = ST_GRAPH(args.batch_size, args.seq_length + 1, args.dataset_dim)
 
     # Log directory
-    log_directory = '../log/'
+    log_directory = '../log_vanilla/'
     log_directory += str(args.leaveDataset) + '/'
 
     # Logging files
@@ -241,7 +246,7 @@ def train(args):
     log_file = open(os.path.join(log_directory, 'val.txt'), 'w')
 
     # Save directory
-    save_directory = '../save/'
+    save_directory = '../save_vanilla/'
     save_directory += str(args.leaveDataset) + '/'
 
     # Dump the arguments into the configuration file

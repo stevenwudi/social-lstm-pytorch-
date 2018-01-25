@@ -154,7 +154,9 @@ def compute_edges(nodes, tstep, edgesPresent):
     return edges
 
 
-def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, dataset_dim, first_id=True):
+
+def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, first_id=True):
+
     '''
     Parameters
     ==========
@@ -175,12 +177,11 @@ def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, data
     '''
     pred_length = ret_nodes.size()[0]
     error = torch.zeros(pred_length).cuda()
-
     errCenter = np.zeros(pred_length)
-
     # We consider only the first main car
     if first_id:
         assumedNodesPresent = [0]
+
 
     for tstep in range(pred_length):
         counter = 0
@@ -193,26 +194,18 @@ def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, data
             true_pos = nodes[tstep, nodeID, :]
 
             error[tstep] += torch.norm(pred_pos - true_pos, p=2)
-            x = true_pos.cpu().numpy()
-            y = pred_pos.cpu().numpy()
-            errCenter[tstep] = ssd_2d(x, y, dataset_dim)
-
             counter += 1
 
         if counter != 0:
             error[tstep] = error[tstep] / counter
 
-    return torch.mean(error), np.mean(errCenter)
+    return torch.mean(error)
 
 
-def ssd_2d(x, y, dataset_dim):
-    s = 0
-    for i in range(2):
-        s += ((x[i] - y[i]) * dataset_dim[i])** 2
-    return np.sqrt(s)
 
 
-def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, dataset_dim, first_id=True):
+def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, first_id=True):
+
     '''
     Parameters
     ==========
@@ -234,7 +227,6 @@ def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, dat
     pred_length = ret_nodes.size()[0]
     error = 0
     counter = 0
-    errCenter = 0
 
     # We consider only the first main car
     if first_id:
@@ -245,18 +237,14 @@ def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, dat
 
         if nodeID not in trueNodesPresent[tstep]:
             continue
-        
+
         pred_pos = ret_nodes[tstep, nodeID, :]
         true_pos = nodes[tstep, nodeID, :]
-        
+
         error += torch.norm(pred_pos - true_pos, p=2)
-        x = true_pos.cpu().numpy()
-        y = pred_pos.cpu().numpy()
-        errCenter += ssd_2d(x, y, dataset_dim)
         counter += 1
-        
+
     if counter != 0:
         error = error / counter
-        errCenter /= counter
-            
-    return error, errCenter
+
+    return error
