@@ -154,7 +154,9 @@ def compute_edges(nodes, tstep, edgesPresent):
     return edges
 
 
-def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent):
+
+def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, first_id=True):
+
     '''
     Parameters
     ==========
@@ -175,6 +177,10 @@ def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent):
     '''
     pred_length = ret_nodes.size()[0]
     error = torch.zeros(pred_length).cuda()
+    errCenter = np.zeros(pred_length)
+    # We consider only the first main car
+    if first_id:
+        assumedNodesPresent = [0]
 
 
     for tstep in range(pred_length):
@@ -196,7 +202,10 @@ def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent):
     return torch.mean(error)
 
 
-def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent):
+
+
+def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, first_id=True):
+
     '''
     Parameters
     ==========
@@ -219,6 +228,9 @@ def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent):
     error = 0
     counter = 0
 
+    # We consider only the first main car
+    if first_id:
+        assumedNodesPresent = [0]
     # Last time-step
     tstep = pred_length - 1
     for nodeID in assumedNodesPresent:

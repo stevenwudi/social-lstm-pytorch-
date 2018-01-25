@@ -43,7 +43,7 @@ class Synthia_DataLoader():
         # Define the path in which the process data would be stored
         if infer:
             data_file = os.path.join(os.path.abspath(os.path.join(self.data_root, os.pardir)),
-                                     self.data_root.split('/')[-1] +"_use_%d.cpkl"%leaveDataset)
+                                     self.data_root.split('/')[-1] +"_use_%d.cpkl"%datasets[0])
         else:
             data_file = os.path.join(os.path.abspath(os.path.join(self.data_root, os.pardir)),
                                      self.data_root.split('/')[-1] +"_leave_%d.cpkl"%leaveDataset)
